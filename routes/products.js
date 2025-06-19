@@ -1,9 +1,8 @@
 const express = require('express');
-const ProductManager = require('../managers/productManager');
+const ProductManager = require('../managers/ProductManager');
 
 const router = express.Router();
 const productManager = new ProductManager();
-
 
 router.get('/', async (req, res) => {
     try {
@@ -13,7 +12,6 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 
 router.get('/:pid', async (req, res) => {
     try {
@@ -33,6 +31,12 @@ router.post('/', async (req, res) => {
     try {
         const productData = req.body;
         const newProduct = await productManager.addProduct(productData);
+        
+        if (req.io) {
+            const products = await productManager.getProducts();
+            req.io.emit('products-updated', products);
+        }
+        
         res.status(201).json(newProduct);
     } catch (error) {
         if (error.message.includes('campos obligatorios') || error.message.includes('código del producto ya existe')) {
@@ -42,7 +46,6 @@ router.post('/', async (req, res) => {
         }
     }
 });
-
 
 router.put('/:pid', async (req, res) => {
     try {
@@ -65,6 +68,12 @@ router.delete('/:pid', async (req, res) => {
     try {
         const { pid } = req.params;
         const deletedProduct = await productManager.deleteProduct(pid);
+        
+        if (req.io) {
+            const products = await productManager.getProducts();
+            req.io.emit('products-updated', products);
+        }
+        
         res.json({ message: 'Producto eliminado correctamente', product: deletedProduct });
     } catch (error) {
         if (error.message === 'Producto no encontrado') {

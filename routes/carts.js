@@ -35,6 +35,8 @@ router.post('/:cid/product/:pid', async (req, res) => {
     } catch (error) {
         if (error.message === 'Carrito no encontrado') {
             res.status(404).json({ error: error.message });
+        } else if (error.message === 'El producto no existe') {
+            res.status(404).json({ error: error.message });
         } else {
             res.status(500).json({ error: error.message });
         }

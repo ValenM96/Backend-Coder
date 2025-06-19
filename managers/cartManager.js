@@ -1,10 +1,12 @@
 const fs = require('fs').promises;
 const path = require('path');
+const ProductManager = require('./ProductManager');
 
 class CartManager {
     constructor() {
         this.path = path.join(__dirname, '../data/carts.json');
         this.carts = [];
+        this.productManager = new ProductManager();
         this.init();
     }
 
@@ -73,6 +75,12 @@ class CartManager {
         const cartIndex = this.carts.findIndex(c => c.id == cartId);
         if (cartIndex === -1) {
             throw new Error('Carrito no encontrado');
+        }
+
+        try {
+            await this.productManager.getProductById(productId);
+        } catch (error) {
+            throw new Error('El producto no existe');
         }
 
         const cart = this.carts[cartIndex];

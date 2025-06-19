@@ -1,0 +1,234 @@
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">{{title}} 
+            <span class="badge bg-success" id="connectionStatus">🟢 Conectado</span>
+        </h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Agregar Nuevo Producto</h5>
+            </div>
+            <div class="card-body">
+                <form id="productForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Título *</label>
+                                <input type="text" class="form-control" id="title" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Descripción *</label>
+                                <textarea class="form-control" id="description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="code" class="form-label">Código *</label>
+                                <input type="text" class="form-control" id="code" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">Precio *</label>
+                                <input type="number" class="form-control" id="price" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="stock" class="form-label">Stock *</label>
+                                <input type="number" class="form-control" id="stock" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Categoría *</label>
+                                <input type="text" class="form-control" id="category" required>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="status" checked>
+                                    <label class="form-check-label" for="status">
+                                        Producto activo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Producto</button>
+                    <button type="reset" class="btn btn-secondary">Limpiar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Lista de Productos</h5>
+                <span class="badge bg-info" id="productCount">{{products.length}} productos</span>
+            </div>
+            <div class="card-body">
+                <div id="productsContainer">
+                    {{#if hasProducts}}
+                        <div class="row" id="productsList">
+                            {{#each products}}
+                                <div class="col-lg-4 col-md-6 mb-3" data-product-id="{{this.id}}">
+                                    <div class="card product-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{this.title}}</h6>
+                                            <p class="card-text small">{{this.description}}</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-success fw-bold">${{this.price}}</span>
+                                                <button class="btn btn-danger btn-sm" onclick="deleteProduct({{this.id}})">
+                                                    🗑️ Eliminar
+                                                </button>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    Stock: {{this.stock}} | Código: {{this.code}}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {{/each}}
+                        </div>
+                    {{else}}
+                        <div class="text-center py-4" id="emptyState">
+                            <h5 class="text-muted">No hay productos</h5>
+                            <p class="text-muted">Agrega tu primer producto usando el formulario de arriba.</p>
+                        </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    
+    const connectionStatus = document.getElementById('connectionStatus');
+    const productForm = document.getElementById('productForm');
+    const productsContainer = document.getElementById('productsContainer');
+    const productCount = document.getElementById('productCount');
+
+    socket.on('connect', () => {
+        connectionStatus.innerHTML = '🟢 Conectado';
+        connectionStatus.className = 'badge bg-success';
+    });
+
+    socket.on('disconnect', () => {
+        connectionStatus.innerHTML = '🔴 Desconectado';
+        connectionStatus.className = 'badge bg-danger';
+    });
+
+    socket.on('products-updated', (products) => {
+        updateProductsList(products);
+        updateProductCount(products.length);
+    });
+
+    productForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            code: document.getElementById('code').value,
+            price: parseFloat(document.getElementById('price').value),
+            stock: parseInt(document.getElementById('stock').value),
+            category: document.getElementById('category').value,
+            status: document.getElementById('status').checked
+        };
+
+        try {
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                productForm.reset();
+                document.getElementById('status').checked = true;
+                showAlert('Producto agregado correctamente', 'success');
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error al agregar producto', 'danger');
+            }
+        } catch (error) {
+            showAlert('Error de conexión', 'danger');
+        }
+    });
+
+    async function deleteProduct(productId) {
+        if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/products/${productId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showAlert('Producto eliminado correctamente', 'success');
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error al eliminar producto', 'danger');
+            }
+        } catch (error) {
+            showAlert('Error de conexión', 'danger');
+        }
+    }
+
+    function updateProductsList(products) {
+        if (products.length === 0) {
+            productsContainer.innerHTML = `
+                <div class="text-center py-4" id="emptyState">
+                    <h5 class="text-muted">No hay productos</h5>
+                    <p class="text-muted">Agrega tu primer producto usando el formulario de arriba.</p>
+                </div>
+            `;
+        } else {
+            const productCards = products.map(product => `
+                <div class="col-lg-4 col-md-6 mb-3" data-product-id="${product.id}">
+                    <div class="card product-card">
+                        <div class="card-body">
+                            <h6 class="card-title">${product.title}</h6>
+                            <p class="card-text small">${product.description}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-success fw-bold">$${product.price}</span>
+                                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">
+                                    🗑️ Eliminar
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Stock: ${product.stock} | Código: ${product.code}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            productsContainer.innerHTML = `<div class="row" id="productsList">${productCards}</div>`;
+        }
+    }
+
+    function updateProductCount(count) {
+        productCount.textContent = `${count} productos`;
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.row'));
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+</script>
