@@ -4,6 +4,7 @@ const CartManager = require('../managers/cartManager');
 const router = express.Router();
 const cartManager = new CartManager();
 
+// POST / - Crear nuevo carrito
 router.post('/', async (req, res) => {
     try {
         const newCart = await cartManager.createCart();

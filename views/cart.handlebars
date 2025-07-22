@@ -1,0 +1,406 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>🛒 {{title}}</h1>
+                <p class="text-muted mb-0">ID del carrito: <code>{{cartId}}</code></p>
+            </div>
+            <div>
+                <a href="/products" class="btn btn-outline-primary">
+                    🏠 Seguir Comprando
+                </a>
+            </div>
+        </div>
+
+        {{#if error}}
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">😞 Carrito no encontrado</h4>
+                <p>{{error}}</p>
+                <hr>
+                <div class="d-flex gap-2">
+                    <a href="/products" class="btn btn-primary">🏠 Ver Catálogo</a>
+                    <button class="btn btn-outline-success" onclick="createNewCart()">➕ Crear Nuevo Carrito</button>
+                </div>
+            </div>
+        {{else}}
+            {{#if hasProducts}}
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">📦 Productos en tu carrito ({{productsCount}})</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">💰 Total</h5>
+                                <h2 class="text-success">${{total}}</h2>
+                                <button class="btn btn-success btn-lg w-100 mt-2" onclick="proceedToCheckout()">
+                                    💳 Proceder al Pago
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        {{#each cart.products}}
+                            <div class="card mb-3 product-item" data-product-id="{{this.product.id}}">
+                                <div class="row g-0">
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center justify-content-center bg-light h-100 p-3">
+                                            {{#if this.product.thumbnails.length}}
+                                                <div class="text-center">
+                                                    <span class="fs-1">📷</span>
+                                                    <br>
+                                                    <small class="text-muted">{{this.product.thumbnails.length}} img</small>
+                                                </div>
+                                            {{else}}
+                                                <span class="fs-1 text-muted">📦</span>
+                                            {{/if}}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-9">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h5 class="card-title">{{this.product.title}}</h5>
+                                                    <p class="card-text text-muted">{{this.product.description}}</p>
+                                                    <small class="text-muted">
+                                                        <strong>Código:</strong> {{this.product.code}}<br>
+                                                        <strong>Categoría:</strong> {{this.product.category}}
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Precio unitario:</span>
+                                                            <span class="fw-bold">${{this.product.price}}</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Cantidad:</span>
+                                                            <span class="fw-bold">{{this.quantity}}</span>
+                                                        </div>
+                                                        <hr>
+                                                        <div class="d-flex justify-content-between">
+                                                            <span class="fw-bold">Subtotal:</span>
+                                                            <span class="fw-bold text-success">
+                                                                ${{multiply this.product.price this.quantity}}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Actualizar cantidad:</label>
+                                                        <div class="input-group">
+                                                            <button class="btn btn-outline-secondary" 
+                                                                    onclick="updateQuantity('{{this.product.id}}', {{this.quantity}}, -1)">
+                                                                ➖
+                                                            </button>
+                                                            <input type="number" class="form-control text-center" 
+                                                                value="{{this.quantity}}" 
+                                                                min="1" 
+                                                                id="qty-{{this.product.id}}"
+                                                                onchange="updateQuantity('{{this.product.id}}', this.value, 0)">
+                                                            <button class="btn btn-outline-secondary" 
+                                                                    onclick="updateQuantity('{{this.product.id}}', {{this.quantity}}, 1)">
+                                                                ➕
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-grid gap-2">
+                                                        <a href="/products/{{this.product.id}}" class="btn btn-outline-primary btn-sm">
+                                                            👁️ Ver Producto
+                                                        </a>
+                                                        <button class="btn btn-outline-danger btn-sm" 
+                                                                onclick="removeProduct('{{this.product.id}}')">
+                                                            🗑️ Eliminar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {{/each}}
+
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">🛠️ Acciones del Carrito</h6>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                    <button class="btn btn-outline-warning" onclick="clearCart()">
+                                        🗑️ Vaciar Carrito
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="shareCart()">
+                                        📤 Compartir Carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card position-sticky" style="top: 20px;">
+                            <div class="card-header">
+                                <h6 class="mb-0">📋 Resumen del Pedido</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Productos ({{productsCount}}):</span>
+                                    <span>${{total}}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Envío:</span>
+                                    <span class="text-success">Gratis</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <strong>Total:</strong>
+                                    <strong class="text-success">${{total}}</strong>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-success btn-lg" onclick="proceedToCheckout()">
+                                        💳 Proceder al Pago
+                                    </button>
+                                    <a href="/products" class="btn btn-outline-primary">
+                                        🏠 Seguir Comprando
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title">ℹ️ Información</h6>
+                                <ul class="list-unstyled small">
+                                    <li>✅ Envío gratis en compras superiores a $50</li>
+                                    <li>🔄 30 días para devoluciones</li>
+                                    <li>🛡️ Garantía de calidad</li>
+                                    <li>💳 Pago seguro</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {{else}}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <span class="display-1">🛒</span>
+                    </div>
+                    <h3 class="text-muted">Tu carrito está vacío</h3>
+                    <p class="text-muted">¡Agrega algunos productos geniales a tu carrito!</p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="/products" class="btn btn-primary btn-lg">
+                            🛍️ Explorar Productos
+                        </a>
+                        <button class="btn btn-outline-info" onclick="shareCart()">
+                            📤 Compartir Carrito
+                        </button>
+                    </div>
+                </div>
+            {{/if}}
+        {{/if}}
+    </div>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Confirmar acción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                ¿Estás seguro de que quieres realizar esta acción?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmModalButton">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const cartId = '{{cartId}}';
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    let pendingAction = null;
+
+    async function updateQuantity(productId, currentQuantity, change) {
+        let newQuantity;
+        
+        if (change === 0) {
+            newQuantity = parseInt(currentQuantity);
+        } else {
+            newQuantity = parseInt(currentQuantity) + change;
+        }
+
+        if (newQuantity < 1) {
+            removeProduct(productId);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: newQuantity })
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                const error = await response.json();
+                showAlert(`❌ ${error.error}`, 'danger');
+            }
+        } catch (error) {
+            showAlert(`❌ Error: ${error.message}`, 'danger');
+        }
+    }
+
+    function removeProduct(productId) {
+        const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+        const productTitle = productCard.querySelector('.card-title').textContent;
+        
+        document.getElementById('confirmModalTitle').textContent = 'Eliminar Producto';
+        document.getElementById('confirmModalBody').innerHTML = `
+            ¿Estás seguro de que quieres eliminar <strong>${productTitle}</strong> de tu carrito?
+        `;
+        
+        pendingAction = async () => {
+            try {
+                const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    confirmModal.hide();
+                    showAlert('✅ Producto eliminado del carrito', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showAlert(`❌ ${error.error}`, 'danger');
+                }
+            } catch (error) {
+                showAlert(`❌ Error: ${error.message}`, 'danger');
+            }
+        };
+        
+        confirmModal.show();
+    }
+
+    function clearCart() {
+        document.getElementById('confirmModalTitle').textContent = 'Vaciar Carrito';
+        document.getElementById('confirmModalBody').innerHTML = `
+            ¿Estás seguro de que quieres eliminar <strong>todos los productos</strong> de tu carrito?
+            Esta acción no se puede deshacer.
+        `;
+        
+        pendingAction = async () => {
+            try {
+                const response = await fetch(`/api/carts/${cartId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    confirmModal.hide();
+                    showAlert('✅ Carrito vaciado exitosamente', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showAlert(`❌ ${error.error}`, 'danger');
+                }
+            } catch (error) {
+                showAlert(`❌ Error: ${error.message}`, 'danger');
+            }
+        };
+        
+        confirmModal.show();
+    }
+    function shareCart() {
+        const cartUrl = window.location.href;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: 'Mi Carrito de Compras',
+                text: 'Mira mi carrito de compras',
+                url: cartUrl
+            });
+        } else {
+            navigator.clipboard.writeText(cartUrl).then(() => {
+                showAlert('📋 Enlace del carrito copiado al portapapeles', 'info');
+            }).catch(() => {
+                showAlert(`📤 Comparte este enlace: ${cartUrl}`, 'info');
+            });
+        }
+    }
+
+    function proceedToCheckout() {
+        showAlert('🚧 Funcionalidad de pago en desarrollo', 'warning');
+    }
+
+    async function createNewCart() {
+        try {
+            const response = await fetch('/api/carts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const newCart = await response.json();
+                window.location.href = `/carts/${newCart.payload.id}`;
+            } else {
+                showAlert('❌ Error al crear carrito', 'danger');
+            }
+        } catch (error) {
+            showAlert(`❌ Error: ${error.message}`, 'danger');
+        }
+    }
+
+    document.getElementById('confirmModalButton').addEventListener('click', () => {
+        if (pendingAction) {
+            pendingAction();
+            pendingAction = null;
+        }
+    });
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.row'));
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+</script>
+
+<style>
+    .product-item {
+        transition: transform 0.2s;
+    }
+    .product-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    @media (max-width: 768px) {
+        .position-sticky {
+            position: relative !important;
+            top: auto !important;
+        }
+    }
+</style>

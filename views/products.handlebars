@@ -1,0 +1,347 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>{{title}}</h1>
+            <a href="/realtimeproducts" class="btn btn-outline-primary">
+                ⚡ Gestión en Tiempo Real
+            </a>
+        </div>
+        
+        {{#if error}}
+            <div class="alert alert-danger" role="alert">
+                {{error}}
+            </div>
+        {{/if}}
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">🔍 Filtros y Ordenamiento</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="searchQuery" class="form-label">Buscar productos</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchQuery" 
+                                placeholder="Título, descripción o categoría..." 
+                                value="{{filters.query}}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchProducts()">
+                                🔍 Buscar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="categoryFilter" class="form-label">Filtrar por categoría</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="categoryFilter" 
+                                placeholder="Nombre de categoría..." 
+                                value="{{filters.category}}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="filterByCategory()">
+                                📂 Filtrar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label for="limitSelect" class="form-label">Productos por página</label>
+                        <select class="form-select" id="limitSelect" onchange="changeLimit()">
+                            <option value="5" {{#if (eq filters.limit 5)}}selected{{/if}}>5</option>
+                            <option value="10" {{#if (eq filters.limit 10)}}selected{{/if}}>10</option>
+                            <option value="20" {{#if (eq filters.limit 20)}}selected{{/if}}>20</option>
+                            <option value="50" {{#if (eq filters.limit 50)}}selected{{/if}}>50</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Ordenar por precio:</label><br>
+                        <div class="btn-group" role="group">
+                            <a href="{{sortAscUrl}}" class="btn btn-outline-success {{#if (eq filters.sort 'asc')}}active{{/if}}">
+                                ⬆️ Menor a Mayor
+                            </a>
+                            <a href="{{sortDescUrl}}" class="btn btn-outline-success {{#if (eq filters.sort 'desc')}}active{{/if}}">
+                                ⬇️ Mayor a Menor
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Filtrar por disponibilidad:</label><br>
+                        <div class="btn-group" role="group">
+                            <a href="{{allUrl}}" class="btn btn-outline-info {{#unless filters.status}}active{{/unless}}">
+                                🌐 Todos
+                            </a>
+                            <a href="{{availableUrl}}" class="btn btn-outline-info {{#if (eq filters.status 'true')}}active{{/if}}">
+                                ✅ Disponibles
+                            </a>
+                            <a href="{{unavailableUrl}}" class="btn btn-outline-info {{#if (eq filters.status 'false')}}active{{/if}}">
+                                ❌ No Disponibles
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{#if hasProducts}}
+            <div class="row">
+                {{#each products}}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card product-card h-100">
+                            {{#if this.thumbnails.length}}
+                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                                    <small class="text-muted">📷 {{this.thumbnails.length}} imagen(es)</small>
+                                </div>
+                            {{else}}
+                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                                    <span class="text-muted fs-1">📦</span>
+                                </div>
+                            {{/if}}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{this.title}}</h5>
+                                <p class="card-text flex-grow-1">{{this.description}}</p>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <strong>Código:</strong> {{this.code}}<br>
+                                        <strong>Categoría:</strong> {{this.category}}<br>
+                                        <strong>Stock:</strong> {{this.stock}} unidades
+                                    </small>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="h4 text-success mb-0">${{this.price}}</span>
+                                    {{#if this.status}}
+                                        <span class="badge bg-success">✅ Disponible</span>
+                                    {{else}}
+                                        <span class="badge bg-danger">❌ No disponible</span>
+                                    {{/if}}
+                                </div>
+
+                                <div class="mt-auto">
+                                    <div class="d-grid gap-2">
+                                        <a href="/products/{{this.id}}" class="btn btn-outline-primary">
+                                            👁️ Ver Detalles
+                                        </a>
+                                        {{#if this.status}}
+                                            <button class="btn btn-success" onclick="addToCart('{{this.id}}')">
+                                                🛒 Agregar al Carrito
+                                            </button>
+                                        {{else}}
+                                            <button class="btn btn-secondary" disabled>
+                                                Sin Stock
+                                            </button>
+                                        {{/if}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {{/each}}
+            </div>
+
+            {{#if pagination}}
+                <nav aria-label="Paginación de productos">
+                    <ul class="pagination justify-content-center">
+                        {{#if pagination.hasPrevPage}}
+                            <li class="page-item">
+                                <a class="page-link" href="{{pagination.prevLink}}">
+                                    ⬅️ Anterior
+                                </a>
+                            </li>
+                        {{else}}
+                            <li class="page-item disabled">
+                                <span class="page-link">⬅️ Anterior</span>
+                            </li>
+                        {{/if}}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{pagination.page}} de {{pagination.totalPages}}
+                            </span>
+                        </li>
+
+                        {{#if pagination.hasNextPage}}
+                            <li class="page-item">
+                                <a class="page-link" href="{{pagination.nextLink}}">
+                                    Siguiente ➡️
+                                </a>
+                            </li>
+                        {{else}}
+                            <li class="page-item disabled">
+                                <span class="page-link">Siguiente ➡️</span>
+                            </li>
+                        {{/if}}
+                    </ul>
+                </nav>
+
+                <div class="text-center">
+                    <small class="text-muted">
+                        Mostrando {{products.length}} productos de {{pagination.totalPages}} páginas
+                    </small>
+                </div>
+            {{/if}}
+        {{else}}
+            <div class="text-center py-5">
+                <h3 class="text-muted">😔 No hay productos disponibles</h3>
+                <p class="text-muted">
+                    {{#if filters.query}}
+                        No se encontraron productos que coincidan con "{{filters.query}}".
+                    {{else if filters.category}}
+                        No se encontraron productos en la categoría "{{filters.category}}".
+                    {{else}}
+                        Los productos aparecerán aquí cuando se agreguen al catálogo.
+                    {{/if}}
+                </p>
+                <a href="/products" class="btn btn-primary">🔄 Ver Todos los Productos</a>
+            </div>
+        {{/if}}
+    </div>
+</div>
+
+<div class="modal fade" id="cartModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🛒 Seleccionar Carrito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="cartId" class="form-label">ID del Carrito:</label>
+                    <input type="text" class="form-control" id="cartId" placeholder="Ingresa el ID del carrito">
+                    <div class="form-text">Si no tienes un carrito, se creará uno nuevo automáticamente.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmAddToCart()">Agregar Producto</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedProductId = null;
+    const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+
+    function searchProducts() {
+        const query = document.getElementById('searchQuery').value;
+        const params = new URLSearchParams(window.location.search);
+        
+        if (query.trim()) {
+            params.set('query', query);
+        } else {
+            params.delete('query');
+        }
+        params.set('page', '1');
+        
+        window.location.href = `/products?${params.toString()}`;
+    }
+
+    function filterByCategory() {
+        const category = document.getElementById('categoryFilter').value;
+        const params = new URLSearchParams(window.location.search);
+        
+        if (category.trim()) {
+            params.set('category', category);
+        } else {
+            params.delete('category');
+        }
+        params.set('page', '1');
+        
+        window.location.href = `/products?${params.toString()}`;
+    }
+
+    function changeLimit() {
+        const limit = document.getElementById('limitSelect').value;
+        const params = new URLSearchParams(window.location.search);
+        params.set('limit', limit);
+        params.set('page', '1');
+        
+        window.location.href = `/products?${params.toString()}`;
+    }
+
+    function addToCart(productId) {
+        selectedProductId = productId;
+        cartModal.show();
+    }
+
+    async function confirmAddToCart() {
+        const cartId = document.getElementById('cartId').value.trim();
+        
+        try {
+            let finalCartId = cartId;
+            
+            if (!finalCartId) {
+                const createResponse = await fetch('/api/carts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (createResponse.ok) {
+                    const newCart = await createResponse.json();
+                    finalCartId = newCart.payload.id;
+                } else {
+                    throw new Error('Error al crear carrito');
+                }
+            }
+
+            const response = await fetch(`/api/carts/${finalCartId}/product/${selectedProductId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: 1 })
+            });
+
+            if (response.ok) {
+                cartModal.hide();
+                showAlert(`✅ Producto agregado al carrito ${finalCartId}`, 'success');
+                document.getElementById('cartId').value = finalCartId; // Recordar el carrito
+            } else {
+                const error = await response.json();
+                showAlert(`❌ ${error.error}`, 'danger');
+            }
+        } catch (error) {
+            showAlert(`❌ Error: ${error.message}`, 'danger');
+        }
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.row'));
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchProducts();
+        }
+    });
+
+    document.getElementById('categoryFilter').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            filterByCategory();
+        }
+    });
+</script>
+
+<style>
+    .product-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+</style>

@@ -142,16 +142,17 @@
                 body: JSON.stringify(formData)
             });
 
+            const result = await response.json();
+
             if (response.ok) {
                 productForm.reset();
                 document.getElementById('status').checked = true;
-                showAlert('Producto agregado correctamente', 'success');
+                showAlert('✅ Producto agregado correctamente', 'success');
             } else {
-                const error = await response.json();
-                showAlert(error.error || 'Error al agregar producto', 'danger');
+                showAlert(`❌ ${result.error || 'Error al agregar producto'}`, 'danger');
             }
         } catch (error) {
-            showAlert('Error de conexión', 'danger');
+            showAlert('❌ Error de conexión', 'danger');
         }
     });
 
@@ -165,14 +166,15 @@
                 method: 'DELETE'
             });
 
+            const result = await response.json();
+
             if (response.ok) {
-                showAlert('Producto eliminado correctamente', 'success');
+                showAlert('✅ Producto eliminado correctamente', 'success');
             } else {
-                const error = await response.json();
-                showAlert(error.error || 'Error al eliminar producto', 'danger');
+                showAlert(`❌ ${result.error || 'Error al eliminar producto'}`, 'danger');
             }
         } catch (error) {
-            showAlert('Error de conexión', 'danger');
+            showAlert('❌ Error de conexión', 'danger');
         }
     }
 
@@ -192,8 +194,8 @@
                             <h6 class="card-title">${product.title}</h6>
                             <p class="card-text small">${product.description}</p>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-success fw-bold">$${product.price}</span>
-                                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">
+                                <span class="text-success fw-bold">${product.price}</span>
+                                <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')">
                                     🗑️ Eliminar
                                 </button>
                             </div>
@@ -201,6 +203,11 @@
                                 <small class="text-muted">
                                     Stock: ${product.stock} | Código: ${product.code}
                                 </small>
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge ${product.status ? 'bg-success' : 'bg-danger'}">
+                                    ${product.status ? '✅ Disponible' : '❌ No disponible'}
+                                </span>
                             </div>
                         </div>
                     </div>

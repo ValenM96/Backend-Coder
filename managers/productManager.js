@@ -1,128 +1,181 @@
-const fs = require('fs').promises;
-const path = require('path');
+const Product = require('../models/Product');
 
 class ProductManager {
     constructor() {
-        this.path = path.join(__dirname, '../data/products.json');
-        this.products = [];
-        this.init();
-    }
-
-    async init() {
-        try {
-            await this.createDataDir();
-            await this.loadProducts();
-        } catch (error) {
-            console.error('Error inicializando ProductManager:', error);
-        }
-    }
-
-    async createDataDir() {
-        const dataDir = path.dirname(this.path);
-        try {
-            await fs.access(dataDir);
-        } catch {
-            await fs.mkdir(dataDir, { recursive: true });
-        }
-    }
-
-    async loadProducts() {
-        try {
-            const data = await fs.readFile(this.path, 'utf-8');
-            this.products = JSON.parse(data);
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                this.products = [];
-                await this.saveProducts();
-            } else {
-                throw error;
-            }
-        }
-    }
-
-    async saveProducts() {
-        await fs.writeFile(this.path, JSON.stringify(this.products, null, 2));
-    }
-
-    generateId() {
-        if (this.products.length === 0) return 1;
-        const maxId = Math.max(...this.products.map(p => parseInt(p.id)));
-        return maxId + 1;
+        console.log('📦 ProductManager inicializado con MongoDB');
     }
 
     async addProduct(productData) {
-        const { title, description, code, price, status = true, stock, category, thumbnails = [] } = productData;
+        try {
+            const { title, description, code, price, status = true, stock, category, thumbnails = [] } = productData;
 
-        if (!title || !description || !code || price === undefined || stock === undefined || !category) {
-            throw new Error('Todos los campos obligatorios deben ser completados');
+            const newProduct = new Product({
+                title,
+                description,
+                code,
+                price: Number(price),
+                status: Boolean(status),
+                stock: Number(stock),
+                category,
+                thumbnails: Array.isArray(thumbnails) ? thumbnails : []
+            });
+
+            const savedProduct = await newProduct.save();
+            return savedProduct.toJSON();
+        } catch (error) {
+            if (error.code === 11000) {
+                throw new Error('El código del producto ya existe');
+            }
+            if (error.name === 'ValidationError') {
+                const messages = Object.values(error.errors).map(err => err.message);
+                throw new Error(messages.join(', '));
+            }
+            throw new Error('Error al crear el producto: ' + error.message);
         }
-
-        const existingProduct = this.products.find(p => p.code === code);
-        if (existingProduct) {
-            throw new Error('El código del producto ya existe');
-        }
-
-        const newProduct = {
-            id: this.generateId(),
-            title,
-            description,
-            code,
-            price: Number(price),
-            status: Boolean(status),
-            stock: Number(stock),
-            category,
-            thumbnails: Array.isArray(thumbnails) ? thumbnails : []
-        };
-
-        this.products.push(newProduct);
-        await this.saveProducts();
-        return newProduct;
     }
 
-    async getProducts() {
-        return this.products;
+    async getProducts(options = {}) {
+        try {
+            const {
+                limit = 10,
+                page = 1,
+                sort = null,
+                query = null,
+                category = null,
+                status = null
+            } = options;
+
+            const paginateOptions = {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                lean: true,
+                customLabels: {
+                    docs: 'payload',
+                    totalDocs: 'totalDocs',
+                    totalPages: 'totalPages',
+                    page: 'page',
+                    pagingCounter: 'pagingCounter',
+                    hasPrevPage: 'hasPrevPage',
+                    hasNextPage: 'hasNextPage',
+                    prevPage: 'prevPage',
+                    nextPage: 'nextPage'
+                }
+            };
+
+            if (sort) {
+                if (sort.toLowerCase() === 'asc') {
+                    paginateOptions.sort = { price: 1 };
+                } else if (sort.toLowerCase() === 'desc') {
+                    paginateOptions.sort = { price: -1 };
+                }
+            }
+
+            const filters = {};
+            if (category) filters.category = category;
+            if (status !== null) filters.status = status;
+            if (query) filters.query = query;
+
+            const result = await Product.findWithFilters(filters, paginateOptions);
+            
+            result.payload = result.payload.map(product => ({
+                id: product._id,
+                ...product,
+                _id: undefined
+            }));
+
+            return result;
+        } catch (error) {
+            throw new Error('Error al obtener productos: ' + error.message);
+        }
+    }
+
+    async getAllProducts() {
+        try {
+            const products = await Product.find().lean();
+            return products.map(product => ({
+                id: product._id,
+                ...product,
+                _id: undefined
+            }));
+        } catch (error) {
+            throw new Error('Error al obtener todos los productos: ' + error.message);
+        }
     }
 
     async getProductById(id) {
-        const product = this.products.find(p => p.id == id);
-        if (!product) {
-            throw new Error('Producto no encontrado');
+        try {
+            const product = await Product.findById(id).lean();
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+            return {
+                id: product._id,
+                ...product,
+                _id: undefined
+            };
+        } catch (error) {
+            if (error.message === 'Producto no encontrado') {
+                throw error;
+            }
+            throw new Error('Error al obtener el producto: ' + error.message);
         }
-        return product;
     }
 
     async updateProduct(id, updateData) {
-        const productIndex = this.products.findIndex(p => p.id == id);
-        if (productIndex === -1) {
-            throw new Error('Producto no encontrado');
-        }
-        delete updateData.id;
+        try {
+            delete updateData.id;
+            delete updateData._id;
 
-        if (updateData.code) {
-            const existingProduct = this.products.find(p => p.code === updateData.code && p.id != id);
-            if (existingProduct) {
+            const updatedProduct = await Product.findByIdAndUpdate(
+                id,
+                updateData,
+                { 
+                    new: true,
+                    runValidators: true
+                }
+            ).lean();
+
+            if (!updatedProduct) {
+                throw new Error('Producto no encontrado');
+            }
+
+            return {
+                id: updatedProduct._id,
+                ...updatedProduct,
+                _id: undefined
+            };
+        } catch (error) {
+            if (error.code === 11000) {
                 throw new Error('El código del producto ya existe');
             }
+            if (error.name === 'ValidationError') {
+                const messages = Object.values(error.errors).map(err => err.message);
+                throw new Error(messages.join(', '));
+            }
+            if (error.message === 'Producto no encontrado') {
+                throw error;
+            }
+            throw new Error('Error al actualizar el producto: ' + error.message);
         }
-
-        this.products[productIndex] = { 
-            ...this.products[productIndex], 
-            ...updateData 
-        };
-
-        await this.saveProducts();
-        return this.products[productIndex];
     }
 
     async deleteProduct(id) {
-        const productIndex = this.products.findIndex(p => p.id == id);
-        if (productIndex === -1) {
-            throw new Error('Producto no encontrado');
+        try {
+            const deletedProduct = await Product.findByIdAndDelete(id).lean();
+            if (!deletedProduct) {
+                throw new Error('Producto no encontrado');
+            }
+            return {
+                id: deletedProduct._id,
+                ...deletedProduct,
+                _id: undefined
+            };
+        } catch (error) {
+            if (error.message === 'Producto no encontrado') {
+                throw error;
+            }
+            throw new Error('Error al eliminar el producto: ' + error.message);
         }
-
-        const deletedProduct = this.products.splice(productIndex, 1)[0];
-        await this.saveProducts();
-        return deletedProduct;
     }
 }
 
