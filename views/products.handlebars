@@ -1,4 +1,4 @@
-<div class="row">
+<div class="row" tabindex="0">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>{{title}}</h1>
@@ -199,6 +199,7 @@
     </div>
 </div>
 
+<!-- Modal del Carrito -->
 <div class="modal fade" id="cartModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -222,8 +223,27 @@
 </div>
 
 <script>
+    // Variables globales
     let selectedProductId = null;
-    const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+    let cartModal = null;
+
+    // Esperar a que el DOM esté completamente cargado
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar el modal después de que el DOM esté listo
+        cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+        
+        // Manejar el evento cuando el modal se oculta
+        document.getElementById('cartModal').addEventListener('hidden.bs.modal', function () {
+            // Restaurar el foco al botón que abrió el modal o al body
+            document.body.focus();
+        });
+        
+        // Recuperar el ID del carrito guardado (si existe)
+        const savedCartId = localStorage.getItem('cartId');
+        if (savedCartId) {
+            document.getElementById('cartId').value = savedCartId;
+        }
+    });
 
     function searchProducts() {
         const query = document.getElementById('searchQuery').value;
@@ -264,6 +284,12 @@
 
     function addToCart(productId) {
         selectedProductId = productId;
+        
+        // Verificar que el modal esté inicializado
+        if (!cartModal) {
+            cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+        }
+        
         cartModal.show();
     }
 
@@ -273,6 +299,7 @@
         try {
             let finalCartId = cartId;
             
+            // Si no hay ID de carrito, crear uno nuevo
             if (!finalCartId) {
                 const createResponse = await fetch('/api/carts', {
                     method: 'POST',
@@ -281,25 +308,34 @@
                 
                 if (createResponse.ok) {
                     const newCart = await createResponse.json();
-                    finalCartId = newCart.payload.id;
+                    finalCartId = newCart.payload.id || newCart.payload._id;
+                    
+                    // Guardar el ID del carrito en localStorage
+                    localStorage.setItem('cartId', finalCartId);
                 } else {
                     throw new Error('Error al crear carrito');
                 }
+            } else {
+                // Guardar el ID del carrito existente
+                localStorage.setItem('cartId', finalCartId);
             }
 
-            const response = await fetch(`/api/carts/${finalCartId}/product/${selectedProductId}`, {
+            // Agregar el producto al carrito
+            const response = await fetch(`/api/carts/${finalCartId}/products/${selectedProductId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ quantity: 1 })
             });
 
             if (response.ok) {
+                // Mover el foco fuera del modal antes de cerrarlo
+                document.activeElement.blur();
                 cartModal.hide();
                 showAlert(`✅ Producto agregado al carrito ${finalCartId}`, 'success');
-                document.getElementById('cartId').value = finalCartId; // Recordar el carrito
+                document.getElementById('cartId').value = finalCartId; // Mantener el ID en el input
             } else {
                 const error = await response.json();
-                showAlert(`❌ ${error.error}`, 'danger');
+                showAlert(`❌ ${error.error || 'Error al agregar producto'}`, 'danger');
             }
         } catch (error) {
             showAlert(`❌ Error: ${error.message}`, 'danger');
@@ -323,15 +359,25 @@
         }, 5000);
     }
 
-    document.getElementById('searchQuery').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            searchProducts();
+    // Event listeners para búsqueda con Enter
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchQuery');
+        const categoryInput = document.getElementById('categoryFilter');
+        
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchProducts();
+                }
+            });
         }
-    });
-
-    document.getElementById('categoryFilter').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            filterByCategory();
+        
+        if (categoryInput) {
+            categoryInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    filterByCategory();
+                }
+            });
         }
     });
 </script>
